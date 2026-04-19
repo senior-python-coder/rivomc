@@ -1,7 +1,6 @@
 import os
 import logging
 import asyncio
-import aiohttp
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.types import (
     Message, CallbackQuery,
@@ -22,13 +21,12 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 ADMIN_IDS = [7980523374]
 ADMIN_CARD = "9860 0466 1364 6200"
 ADMIN_CARD_HOLDER = "Kamron Qayumov"
-SERVER_ID = os.getenv("SERVER_ID", "f7a3b1da")
-PANEL_API_KEY = os.getenv("PANEL_API_KEY", "")
+
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://rivomc.onrender.com")
 PORT = int(os.getenv("PORT", 3001))
 
 # =============================================
-# RANKLAR (eng arzondan eng qimmatga)
+# RANKLAR 
 # =============================================
 RANKS = [
     {"id": "elvarox",  "name": "🔹 ᴇʟᴠᴀʀᴏх",  "price": 6000,  "group": "elvarox"},
@@ -90,44 +88,7 @@ class OrderState(StatesGroup):
     send_chek = State()
     enter_token_amount = State()
 
-# =============================================
-# PANEL COMMAND
-# =============================================
-async def send_server_command(command: str) -> dict:
-    if not PANEL_API_KEY:
-        return {"success": False, "error": "PANEL_API_KEY o'rnatilmagan!"}
-    url = f"https://panel.mchost.uz/api/client/servers/{SERVER_ID}/command"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json={"command": command}, headers={
-                "Authorization": f"Bearer {PANEL_API_KEY}",
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            }) as resp:
-                if resp.status in (200, 204):
-                    return {"success": True}
-                text = await resp.text()
-                return {"success": False, "error": f"Panel xatosi: {resp.status} - {text}"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
 
-async def give_rank(nick: str, group: str) -> dict:
-    result = await send_server_command(f"lp user {nick} parent set {group}")
-    if result["success"]:
-        await send_server_command(f"bc &a[RivoMC] &f{nick} &7endi &6{group} &7egasi!")
-    return result
-
-async def give_tokens(nick: str, amount: int) -> dict:
-    result = await send_server_command(f"points give {nick} {amount}")
-    if result["success"]:
-        await send_server_command(f"bc &a[RivoMC] &f{nick} &7ga &6{amount} token &7berildi!")
-    return result
-
-async def do_unban(nick: str) -> dict:
-    return await send_server_command(f"unban {nick}")
-
-async def do_unmute(nick: str) -> dict:
-    return await send_server_command(f"unmute {nick}")
 
 # =============================================
 # KLAVIATURALAR
@@ -477,38 +438,26 @@ async def handle_callback(cb: CallbackQuery, state: FSMContext):
             await cb.message.answer("⚠️ Buyurtma allaqachon ko'rib chiqilgan.")
             return
 
-        result = {"success": True}
-        if order.get("group"):
-            result = await give_rank(order["nick"], order["group"])
-        elif order.get("service_type") == "tokens" and order.get("token_amount"):
-            result = await give_tokens(order["nick"], order["token_amount"])
-        elif order.get("service_type") == "unban":
-            for _ in range(order.get("svc_count", 1)):
-                result = await do_unban(order["nick"])
-        elif order.get("service_type") == "unmute":
-            for _ in range(order.get("svc_count", 1)):
-                result = await do_unmute(order["nick"])
-
-        if not result["success"]:
-            await cb.message.answer(
-                f"⚠️ <b>Panel Xatosi:</b> {result.get('error')}\nIltimos paneldan qo'lda bering!",
-                parse_mode="HTML"
-            )
-            return
-
         order["status"] = "completed"
+
+        # Foydalanuvchiga xabar yuborish
         await cb.bot.send_message(
             order["user_id"],
-            f"✅ <b>Buyurtmangiz tasdiqlandi!</b>\n\n"
+            f"✅ <b>To'lovingiz tasdiqlandi!</b>\n\n"
             f"📦 #{oid} — {order['type']}\n"
-            f"🎮 Nick: <code>{order['nick']}</code>\n\n"
-            f"🎉 Serverga kirib tekshiring!",
+            f"🎮 Nick: <code>{order['nick']}</code>\n"
+            f"💰 {fmt(order['price'])}\n\n"
+            f"🎉 Tez orada serverga kirib tekshiring!\n"
+            f"❓ Muammo bo'lsa admin bilan bog'laning.",
             parse_mode="HTML"
         )
+
+        # Admin xabarini yangilash
         try:
             await cb.message.edit_caption(
-                f"✅ <b>TASDIQLANDI #{oid}</b>\n🎮 {order['nick']} | {order['type']}\n"
-                f"👨‍💼 @{cb.from_user.username or cb.from_user.first_name}",
+                f"✅ <b>TASDIQLANDI #{oid}</b>\n"
+                f"🎮 {order['nick']} | {order['type']}\n"
+                f"👨‍💼 Admin: @{cb.from_user.username or cb.from_user.first_name}",
                 parse_mode="HTML"
             )
         except Exception:
