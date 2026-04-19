@@ -264,7 +264,7 @@ async def menu_help(msg: Message):
         "💰 <b>Token narxi:</b>\n"
         "1,000 token = 3,000 so'm\n"
         "10,000 token = 25,000 so'm\n\n"
-        "🌐 Server: RivoMC Anarxiya",
+        "🌐 Server: RivoMC.Uz",
         parse_mode="HTML",
         reply_markup=main_menu(msg.from_user.id)
     )
