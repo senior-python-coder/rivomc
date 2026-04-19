@@ -208,7 +208,7 @@ async def cmd_start(msg: Message, state: FSMContext):
 async def menu_rank(msg: Message, state: FSMContext):
     await state.clear()
     await msg.answer(
-        "🏆 <b>⚔️ Anarxiya — Rank tanlang:</b>\n\n(eng arzondan eng qimmatga)",
+        "🏆 <b>⚔️ Anarxiya — Rank tanlang:</b>\n",
         parse_mode="HTML",
         reply_markup=rank_keyboard()
     )
